@@ -16,41 +16,79 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
+/**
+ * Service responsible for generating and validating JSON Web Tokens (JWT).
+ *
+ * <p>This service provides authentication support for the Smart Clinic
+ * application by generating signed JWT tokens for authenticated users
+ * and validating tokens received with incoming requests.</p>
+ *
+ * <p>The generated tokens contain:</p>
+ * <ul>
+ *     <li>User email as the token subject</li>
+ *     <li>Token creation timestamp</li>
+ *     <li>Token expiration timestamp (24 hours)</li>
+ * </ul>
+ */
 @Service
 public class TokenService {
 
-    private static final Logger logger = LoggerFactory.getLogger(TokenService.class);
+    /**
+     * Logger used for recording token generation and validation events.
+     */
+    private static final Logger logger =
+            LoggerFactory.getLogger(TokenService.class);
 
+    /**
+     * Secret key loaded from application properties.
+     * Used to sign and verify JWT tokens.
+     */
     @Value("${jwt.secret}")
     private String secret;
 
     /**
-     * Generates a JWT token for the specified user email.
+     * Generates a signed JWT token for the specified user.
      *
-     * @param email User's email address
-     * @return Signed JWT token
+     * <p>The generated token contains the user's email,
+     * issue timestamp, and expiration timestamp.</p>
+     *
+     * @param email authenticated user's email address
+     * @return signed JWT token
      */
     public String generateToken(String email) {
+
+        logger.info("Generating JWT token for user: {}", email);
+
         return Jwts.builder()
                 .setSubject(email)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + 86400000)) // 24 hours
+                .setExpiration(new Date(System.currentTimeMillis() + 86400000))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
     }
 
     /**
-     * Returns the signing key used for JWT generation and validation.
+     * Creates the secret signing key used for
+     * JWT generation and validation.
+     *
+     * @return HMAC SHA signing key
      */
     private SecretKey getSigningKey() {
-        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        return Keys.hmacShaKeyFor(
+                secret.getBytes(StandardCharsets.UTF_8)
+        );
     }
 
     /**
-     * Validates the supplied JWT token.
+     * Validates a JWT token.
      *
-     * @param token JWT token (with or without "Bearer " prefix)
-     * @return true if valid; otherwise false
+     * <p>The supplied token may optionally include the
+     * {@code Bearer } prefix. The method verifies the
+     * token signature, expiration time, and integrity.</p>
+     *
+     * @param token JWT token received from the client
+     * @return {@code true} if the token is valid;
+     *         {@code false} otherwise
      */
     public boolean validateToken(String token) {
 
