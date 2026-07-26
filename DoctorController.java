@@ -2,6 +2,7 @@ package com.project.backend.controllers;
 
 import com.project.backend.services.DoctorService;
 import com.project.backend.services.TokenService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,23 +21,36 @@ public class DoctorController {
         this.tokenService = tokenService;
     }
 
-    @GetMapping("/{doctorId}/availability")
+    @GetMapping("/{userId}/{doctorId}/availability")
     public ResponseEntity<?> getDoctorAvailability(
+
+            @PathVariable Long userId,
             @PathVariable Long doctorId,
             @RequestParam String date,
             @RequestHeader("Authorization") String token) {
 
+        // Validate JWT token
         if (!tokenService.validateToken(token)) {
-            return ResponseEntity.status(401)
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of(
                             "success", false,
                             "message", "Invalid token"
                     ));
         }
 
+        // Validate user role
+        if (!tokenService.hasRole(token, "PATIENT")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of(
+                            "success", false,
+                            "message", "Access denied. User must have PATIENT role."
+                    ));
+        }
+
         return ResponseEntity.ok(
                 Map.of(
                         "success", true,
+                        "userId", userId,
                         "doctorId", doctorId,
                         "date", date,
                         "availableTimes",
